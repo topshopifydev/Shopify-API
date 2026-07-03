@@ -1,113 +1,129 @@
-# Shopify Counter
+<div align="center">
 
-This simple project displays a counter on a web page and updates it from a serverless API.
+# 🛍️ Shopify Live Sales Counter
 
-## Setup
+**A real‑time Shopify sales dashboard that runs on serverless — zero database, instant deploy.**
 
-1. Install dependencies (Node 18 or newer is required but no extra packages are needed).
-2. Set the environment variables `SHOPIFY_SHOP_1`, `SHOPIFY_ADMIN_TOKEN_1`, `SHOPIFY_SHOP_2` and `SHOPIFY_ADMIN_TOKEN_2` with your Shopify store domains and tokens. Values must look like `my-store.myshopify.com` and the tokens must be valid. These variables are required for both preview and production deployments. Copy `.env.example` to `.env` and replace the placeholder values. Define the same variables in your Vercel project to use them in deployed environments.
-3. (Optional) You can still use `URL_1` and `URL_2` for the original counter endpoints.
-4. Start the development server with `vercel dev`.
-5. Open `index.html` in your browser to see the counter.
-6. You can also specify custom counter URLs on the **Settings** page. Enter them in the
-   fields labelled *Counter URL 1* and *Counter URL 2*. They are stored in
-   `localStorage` under `counterUrl1` and `counterUrl2` and will be used on subsequent
-   visits.
+Track your store's revenue as it happens, with an animated counter and a monthly‑goal progress bar you can edit right in the browser.
 
-The page fetches `/api/shopify-counter` every five seconds and animates the number toward the latest value.
-Below the counter a progress bar shows progress toward today's goal with the current
-sales value displayed inside the bar. Adjust the monthly goal using the slider or by
-editing the number next to it. The progress bar changes color along with the counter to reflect progress.
+[![Deploy with Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com/new)
+![Node](https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)
+![Shopify Admin API](https://img.shields.io/badge/Shopify-Admin_GraphQL-96BF48?logo=shopify&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-The page now includes a small hamburger menu in the top-right corner for quick navigation links.
-Use the **Settings** link in that menu to open a page with a table for recording monthly goals for the year.
-Each month's goal is stored separately in `localStorage`. When the month changes the counter page reads the goal for that month so the values persist without a backend.
+</div>
 
-## API Access
+---
 
-Set the `API_KEY` environment variable to restrict access to the `/api/shopify-counter` route. When a key is set, requests must include the same value in the `x-api-key` header or the API responds with `401 Unauthorized`. Leave `API_KEY` unset to allow unrestricted access.
+## ✨ Features
 
-## API Usage
+- **⚡ Live counter** — the page polls `/api/sales` every 5 seconds and animates the number toward the latest total.
+- **🎯 Monthly goals** — set a target per month with a slider or inline‑editable value; a color‑changing progress bar shows how close you are.
+- **🔗 Shopify Admin GraphQL API** — aggregates real order totals (revenue, tax, discounts, shipping) with automatic cursor pagination over up to 250 orders per page.
+- **🏬 Multi‑store ready** — whitelist multiple shops via `ALLOWED_SHOPS`, each with its own token, plus a single‑shop fallback for simple setups.
+- **📅 Custom date ranges** — pass `from` / `to` ISO timestamps to count orders within any window.
+- **🔒 Optional API key** — lock down the API with an `x-api-key` header.
+- **🩺 Health endpoint** — `/api/health` reports the active API version and which shops have valid tokens.
+- **🗄️ No backend state** — goals and settings persist in `localStorage`; the app is fully static + serverless.
 
-The `/api/shopify-counter` endpoint accepts two optional query parameters. Use
-`period` to choose a built‑in date range:
+## 🏗️ How it works
 
-- `month` (default) &ndash; count orders from the first of the current month.
-- `year` &ndash; count orders from the start of the current year.
-- `all` &ndash; include all orders.
-
-The calculated start date can be overridden with `created_at_min`, which accepts
-an ISO 8601 timestamp.
-
-Example requests:
-
-```bash
-curl 'https://example.com/api/shopify-counter?period=year'
-curl 'https://example.com/api/shopify-counter?created_at_min=2024-04-01T00:00:00Z'
+```
+Browser (index.html)
+   │  fetch /api/sales?from=…&to=…  every 5s
+   ▼
+Vercel Serverless Function (api/sales.ts)
+   │  X-Shopify-Access-Token
+   ▼
+Shopify Admin GraphQL API  →  orders(query: "created_at:>=… status:any")
+   │  paginate via cursor, sum totals
+   ▼
+{ ok: true, total: { count, order_totals, tax, discounts, shipping } }
 ```
 
-The API returns the combined order count along with counts for each shop:
+## 🚀 Quick start
+
+```bash
+# 1. Install (includes the Vercel CLI for local dev)
+npm install          # Node 18+
+
+# 2. Configure your store
+cp .env.example .env
+```
+
+Set these environment variables (locally in `.env`, and in your Vercel project for deploys):
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `SHOPIFY_SHOP` | ✅ | Your `*.myshopify.com` domain |
+| `SHOPIFY_TOKEN` | ✅ | Admin API token with the `read_orders` scope |
+| `SHOPIFY_API_VERSION` | — | Admin API version (default `2025-07`) |
+| `ALLOWED_SHOPS` | — | Comma‑separated shop domains for multi‑store mode |
+| `SHOPIFY_TOKEN__<SHOP>` | — | Per‑shop token in multi‑store mode |
+| `API_KEY` | — | If set, requests must send it in the `x-api-key` header |
+
+```bash
+# 3. Run it
+vercel dev
+# open index.html → watch the counter climb
+```
+
+## 📡 API
+
+### `GET /api/sales`
+
+Aggregates order totals for a shop and date range.
+
+| Query param | Description |
+| --- | --- |
+| `from` | ISO 8601 start timestamp (defaults to start of month) |
+| `to` | ISO 8601 end timestamp (defaults to end of month) |
+| `shop` | Shop domain (defaults to `SHOPIFY_SHOP`) |
+
+```bash
+curl 'https://your-app.vercel.app/api/sales?from=2024-04-01T00:00:00Z&to=2024-04-30T23:59:59Z'
+```
 
 ```json
 {
-  "number": 42,
-  "butikk1": 21,
-  "butikk2": 21
+  "ok": true,
+  "perShop": [{ "shop": "9rds.myshopify.com", "totals": { "count": 42, "order_totals": 123.45, "tax": 1.23, "discounts": 0, "shipping": 4.56 } }],
+  "total": { "count": 42, "order_totals": 123.45, "tax": 1.23, "discounts": 0, "shipping": 4.56 },
+  "number": 123.45
 }
 ```
 
-## Running tests
+### `GET /api/health`
 
-Run the test suite with:
+Returns the active API version and token status per allowed shop.
+
+## 🧪 Testing & type‑checking
 
 ```bash
-npm test
+npm test        # node --test
+npm run typecheck
 ```
 
-This command executes `node --test` under the hood.
+## 🛠️ Tech stack
 
-## Troubleshooting production
+TypeScript · Vercel Serverless Functions · Shopify Admin GraphQL API · Vanilla JS/HTML frontend · `localStorage` persistence
 
-Follow these steps if the API does not return the expected counts after deployment:
+## 🐛 Troubleshooting
 
-1. In Vercel, ensure the variables `SHOPIFY_SHOP_1`, `SHOPIFY_ADMIN_TOKEN_1`,
-   `SHOPIFY_SHOP_2` and `SHOPIFY_ADMIN_TOKEN_2` are defined for both *Production*
-   and *Preview* environments. The shop values must be your `myshopify.com`
-   domains without `https://`, and the tokens must be valid admin tokens.
-2. Confirm that the tokens include the `read_orders` scope and that the app is
-   installed and active in each store.
-3. After updating any variables, trigger a redeploy so the new values are
-   available to the serverless function.
-4. Check the Vercel **Runtime Logs** for messages such as `Unauthorized`,
-   `Missing env variable`, `Failed to fetch` or `count: 0` when calling
-   `/api/shopify-counter`.
-5. Test the production endpoint directly:
+- In Vercel, define `SHOPIFY_SHOP`, `SHOPIFY_TOKEN` (and optionally `SHOPIFY_API_VERSION`) for **both** Production and Preview, then redeploy.
+- Check **Runtime Logs** for `Shopify HTTP error` or `Invalid JSON from Shopify`.
+- Verify your token directly:
+  ```bash
+  curl -H "X-Shopify-Access-Token: <TOKEN>" \
+    https://<SHOP>.myshopify.com/admin/api/2025-07/orders/count.json
+  ```
+  A healthy response looks like `{ "count": n }`. If not, regenerate the token.
 
-   ```bash
-   curl 'https://<your-domain>/api/shopify-counter?period=month'
-   ```
+## 🤝 Contributing
 
-   The response should contain real counts from Shopify, not placeholder
-   numbers.
-6. If something fails, log the problem clearly and return a meaningful error
-   response instead of dummy values.
+Issues and pull requests are welcome. If this project helps you, a ⭐ goes a long way!
 
-## Slik feilsøker du API-integrasjon
+## 📄 License
 
-1. Test Shopify-API direkte for hver butikk:
-
-   ```bash
-   curl -H "X-Shopify-Access-Token: <TOKEN>" \
-     https://<SHOP>.myshopify.com/admin/api/2025-04/orders/count.json
-   ```
-
-   Svaret bør være på formen `{ "count": n }`. Hvis du ikke får et gyldig tall,
-   må tokenet kontrolleres eller regenereres.
-2. Når `fetchCount` kjøres logges responsen fra Shopify til Vercel Runtime Logs
-   sammen med hvilken URL og de første tegnene i tokenet som brukes. Se loggene
-   for statuskode og JSON som returneres.
-3. Hvis API-kallet mislykkes eller returnerer urealistisk store tall, sender
-   backend en feilmelding og `number: 0`. Frontend oppdaterer telleren til 0 når
-   dette skjer.
-4. Sjekk antall ordre i Shopify Admin for valgt periode og sammenlign med
-   verdien fra `/api/shopify-counter`. Tallene skal matche.
+MIT — free to use, modify, and share.
