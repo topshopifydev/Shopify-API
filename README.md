@@ -124,6 +124,8 @@ TypeScript · Vercel Serverless Functions · Shopify Admin GraphQL API · Vanill
 
 Issues and pull requests are welcome. If this project helps you, a ⭐ goes a long way!
 
+
+
 ## 📄 License
 
 MIT — free to use, modify, and share.
